@@ -1,6 +1,5 @@
 #! /bin/sh
-
-
+   
 get_main_class() {
     pom_namespace_uri="http://maven.apache.org/POM/4.0.0"
     xmlstarlet sel -N "n=${pom_namespace_uri}" \
@@ -14,5 +13,9 @@ dropwizard_args="server ${yml_configuration}"
 
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 
+
+# use -o for offline mode
+
+
 mvn compile exec:java \
-  -Dexec.mainClass="$main_class" -Dexec.args="$dropwizard_args" -o
+  -Dexec.mainClass="$main_class" -Dexec.args="$dropwizard_args" "$@"

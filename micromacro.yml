@@ -30,13 +30,13 @@ database:
   driverClass: org.postgresql.Driver
 
   # the username
-  user: postgres
+  user: micromacro
 
   # the password
-  password: postgres
+  password: ApNjUYqwhpigjOoa
 
   # the JDBC URL
-  url: jdbc:postgresql://127.0.0.1/oldbailey-alex
+  url: jdbc:postgresql://127.0.0.1/micromacro
 
   # any properties specific to your JDBC driver:
   properties:
