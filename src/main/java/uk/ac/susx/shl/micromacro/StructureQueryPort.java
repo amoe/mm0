@@ -1,8 +1,10 @@
 package uk.ac.susx.shl.micromacro;
 
-import org.jdbi.v3.core.Handle;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.jdbi.v3.core.Jdbi;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +15,6 @@ import uk.ac.susx.tag.method51.core.data.store2.query.Partition;
 import uk.ac.susx.tag.method51.core.data.store2.query.Proximity;
 import uk.ac.susx.tag.method51.core.data.store2.query.Select;
 import uk.ac.susx.tag.method51.core.data.store2.query.SqlQuery;
-import uk.ac.susx.tag.method51.core.data.store2.query.Update;
 import uk.ac.susx.tag.method51.core.meta.Key;
 import uk.ac.susx.tag.method51.core.meta.filters.DatumFilter;
 import uk.ac.susx.tag.method51.core.meta.filters.KeyFilter;
@@ -22,13 +23,12 @@ import uk.ac.susx.tag.method51.core.meta.filters.logic.LogicParser;
 import uk.ac.susx.tag.method51.core.meta.types.RuntimeType;
 import uk.ac.susx.tag.method51.twitter.LabelDecision;
 
-import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PlaygroundTest {
-    private static Logger LOG = LoggerFactory.getLogger(PlaygroundTest.class);
+public class StructureQueryPort {
+    private static Logger LOG = LoggerFactory.getLogger(StructureQueryPort.class);
 
     private SqlQuery makeProximityQuery() {
         String table = "sampled";
@@ -66,7 +66,6 @@ public class PlaygroundTest {
         KeyFilter kf2 = new LabelDecisionFilter(arg2, "observed");
         literals.put("c", kf2);
 
-
         LogicParser parser = new LogicParser(literals);
 
         DatumFilter tableFilter = null;
@@ -83,9 +82,7 @@ public class PlaygroundTest {
         return proximityQuery;
     }
 
-    @Test
-    public void runProximityQuery() throws Exception {
-        LOG.info("sanity check");
+    private BaseDAO<String, SqlQuery> getDao() {
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setDatabaseName("micromacro");
         ds.setUser("micromacro");
@@ -93,17 +90,30 @@ public class PlaygroundTest {
         Jdbi j = Jdbi.create(ds);
         SqlQuery query = makeProximityQuery();
         BaseDAO<String, SqlQuery> d = new BaseDAO<>(j, new DatumStringMapper());
-        LOG.info("results are {}", d.stream(query).count());
+
+        return d;
     }
 
-    @Test
-    public void runSelectQuery() throws Exception {
-        LOG.info("sanity check");
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setDatabaseName("micromacro");
-        ds.setUser("micromacro");
-        ds.setPassword("xyzzy");
-        Jdbi j = Jdbi.create(ds);
+    public void runProximityQuery() {
+        BaseDAO<String, SqlQuery> dao = getDao();
+        SqlQuery sqlQuery = makeProximityQuery();
+
+        List<String> results = dao.list(sqlQuery);
+        LOG.info("results are {}", results.size());
+        JsonParser parser = new JsonParser();
+
+        for (String s : results) {
+            JsonElement element = parser.parse(s);
+            JsonObject object = element.getAsJsonObject();
+            boolean isProximityMatch = object.get("__proximity").getAsBoolean();
+            boolean isTargetMatch = object.get("__target").getAsBoolean();
+
+            LOG.info("proximity: {}, target: {}", isProximityMatch, isTargetMatch);
+        }
+    }
+
+    public void runSelectQuery() {
+        BaseDAO<String, SqlQuery> dao = getDao();
 
         Key<LabelDecision> arg1 = Key.of("classify/confidenceexpfiltered-confidenceexpressed", RuntimeType.of(LabelDecision.class));
         KeyFilter kf = new LabelDecisionFilter(arg1, "confidenceexpressed");
@@ -113,7 +123,13 @@ public class PlaygroundTest {
         LogicParser p = new LogicParser(literals);
         DatumFilter df = p.parse(null, "g");
         SqlQuery query = new Select("sampled").where(df);
-        BaseDAO<String, SqlQuery> d = new BaseDAO<>(j, new DatumStringMapper());
-        LOG.info("results are {}", d.stream(query).count());
+
+        LOG.info("results are {}", dao.stream(query).count());
+    }
+
+    public static void main(String[] args) {
+        StructureQueryPort port = new StructureQueryPort();
+        port.runProximityQuery();
+        port.runSelectQuery();
     }
 }
