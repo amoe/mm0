@@ -94,25 +94,13 @@ public class StructureQueryPort {
         return d;
     }
 
-    public void runProximityQuery() {
+    public List<String> runProximityQuery() {
         BaseDAO<String, SqlQuery> dao = getDao();
         SqlQuery sqlQuery = makeProximityQuery();
-
-        List<String> results = dao.list(sqlQuery);
-        LOG.info("results are {}", results.size());
-        JsonParser parser = new JsonParser();
-
-        for (String s : results) {
-            JsonElement element = parser.parse(s);
-            JsonObject object = element.getAsJsonObject();
-            boolean isProximityMatch = object.get("__proximity").getAsBoolean();
-            boolean isTargetMatch = object.get("__target").getAsBoolean();
-
-            LOG.info("proximity: {}, target: {}", isProximityMatch, isTargetMatch);
-        }
+        return dao.list(sqlQuery);
     }
 
-    public void runSelectQuery() {
+    public List<String> runSelectQuery() {
         BaseDAO<String, SqlQuery> dao = getDao();
 
         Key<LabelDecision> arg1 = Key.of("classify/confidenceexpfiltered-confidenceexpressed", RuntimeType.of(LabelDecision.class));
@@ -124,12 +112,32 @@ public class StructureQueryPort {
         DatumFilter df = p.parse(null, "g");
         SqlQuery query = new Select("sampled").where(df);
 
-        LOG.info("results are {}", dao.stream(query).count());
+        return dao.list(query);
+    }
+
+    public void run() {
+        List<String> set1 = runProximityQuery();
+        List<String> set2 = runSelectQuery();
+
+        LOG.info("set1 size is {}", set1.size());
+        LOG.info("set2 size is {}", set2.size());
+
+        JsonParser parser = new JsonParser();
+
+        for (String s : set1) {
+            JsonElement element = parser.parse(s);
+            JsonObject object = element.getAsJsonObject();
+            boolean isProximityMatch = object.get("__proximity").getAsBoolean();
+            boolean isTargetMatch = object.get("__target").getAsBoolean();
+
+            //LOG.info("proximity: {}, target: {}", isProximityMatch, isTargetMatch);
+        }
+
     }
 
     public static void main(String[] args) {
         StructureQueryPort port = new StructureQueryPort();
-        port.runProximityQuery();
-        port.runSelectQuery();
+        port.run();   // escape static context
+
     }
 }
