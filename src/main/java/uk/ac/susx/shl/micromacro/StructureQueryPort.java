@@ -23,9 +23,12 @@ import uk.ac.susx.tag.method51.core.meta.filters.logic.LogicParser;
 import uk.ac.susx.tag.method51.core.meta.types.RuntimeType;
 import uk.ac.susx.tag.method51.twitter.LabelDecision;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class StructureQueryPort {
     private static Logger LOG = LoggerFactory.getLogger(StructureQueryPort.class);
@@ -116,6 +119,14 @@ public class StructureQueryPort {
     }
 
     public void run() {
+        List<String> wantedConcepts = Arrays.asList("illuminated", "observed", "confidence");
+        Map<String, Set<String>> conceptSeen = new HashMap<>();
+        Map<String, String> sentenceIndex = new HashMap<>();
+
+        for (String s: wantedConcepts) {
+            conceptSeen.put(s, new HashSet<>());
+        }
+
         List<String> set1 = runProximityQuery();
         List<String> set2 = runSelectQuery();
 
@@ -124,15 +135,62 @@ public class StructureQueryPort {
 
         JsonParser parser = new JsonParser();
 
+        // Parse the proximity set
         for (String s : set1) {
             JsonElement element = parser.parse(s);
             JsonObject object = element.getAsJsonObject();
+            String sentenceId = object.get("ob/sentence-id").getAsString();
+
+            sentenceIndex.put(sentenceId, s);
+
             boolean isProximityMatch = object.get("__proximity").getAsBoolean();
             boolean isTargetMatch = object.get("__target").getAsBoolean();
+
+            if (isProximityMatch) {    // it matched the first
+                conceptSeen.get("illuminated").add(sentenceId);
+            }
+
+            if (isTargetMatch) {
+                conceptSeen.get("observed").add(sentenceId);
+            }
 
             //LOG.info("proximity: {}, target: {}", isProximityMatch, isTargetMatch);
         }
 
+        // Now parse the select set, we know that ALL matched items were classified as such.
+        for (String s : set2) {
+            JsonElement element = parser.parse(s);
+            JsonObject object = element.getAsJsonObject();
+            String sentenceId = object.get("ob/sentence-id").getAsString();
+
+            sentenceIndex.put(sentenceId, s);
+
+            conceptSeen.get("confidence").add(sentenceId);
+        }
+
+        LOG.info("Illuminated: {}", conceptSeen.get("illuminated").size());
+        LOG.info("Observed: {}", conceptSeen.get("observed").size());
+        LOG.info("Confidence: {}", conceptSeen.get("confidence").size());
+
+        Set<String> cooccurrences = sentenceIndex.keySet();
+
+        LOG.info("Starting with {} sentences", cooccurrences.size());
+
+        for (String concept : wantedConcepts) {
+            Set<String> layerMatched = conceptSeen.get(concept);
+            cooccurrences.retainAll(layerMatched);
+
+            LOG.info("Narrowed set: {}", cooccurrences.size());
+
+        }
+
+        for (String sentenceId : cooccurrences) {
+            String encoded = sentenceIndex.get(sentenceId);
+            JsonElement element = parser.parse(encoded);
+            JsonObject object = element.getAsJsonObject();
+
+            LOG.info("{},{}", object.get("ob/trialAccount-id").getAsString(), object.get("text").getAsString());
+        }
     }
 
     public static void main(String[] args) {
