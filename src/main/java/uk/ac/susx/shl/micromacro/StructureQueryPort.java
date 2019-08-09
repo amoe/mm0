@@ -196,6 +196,5 @@ public class StructureQueryPort {
     public static void main(String[] args) {
         StructureQueryPort port = new StructureQueryPort();
         port.run();   // escape static context
-
     }
 }
