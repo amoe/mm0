@@ -167,6 +167,14 @@
             <version>${fuzzywuzzy.version}</version>
         </dependency>
 
+
+        <dependency>
+            <groupId>org.jgrapht</groupId>
+            <artifactId>jgrapht-core</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+
+
         <dependency>
             <groupId>org.geotools</groupId>
             <artifactId>gt-main</artifactId>

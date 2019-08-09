@@ -4,6 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.jdbi.v3.core.Jdbi;
+import org.jgrapht.Graph;
+import org.jgrapht.GraphPath;
+import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
+import org.jgrapht.alg.shortestpath.DijkstraShortestPath;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RingQueryPort {
     private static Logger LOG = LoggerFactory.getLogger(RingQueryPort.class);
@@ -56,8 +63,19 @@ public class RingQueryPort {
         return dao.list(query);
     }
 
+    public Graph<ConceptNode, DefaultEdge> conceptGraph() {
+        Graph<ConceptNode, DefaultEdge> g = new DefaultDirectedGraph<>(DefaultEdge.class);
+        ConceptNode n1 = new ConceptNode("Pursuit", new LabelDecisionFilter(Key.of("classify/pursuit-chase", RuntimeType.of(LabelDecision.class)), "chase"));
+        ConceptNode n2 = new ConceptNode("Apprehend", new BooleanFilter(Key.of("ob.activity/apprehend", RuntimeType.BOOLEAN), "true"));
+        g.addVertex(n1);
+        g.addVertex(n2);
+        g.addEdge(n1, n2);
+        return g;
+    }
 
-    public void run() {
+
+
+    public void runHardcodedQueries() {
         Key<LabelDecision> arg1 = Key.of("classify/pursuit-chase", RuntimeType.of(LabelDecision.class));
         KeyFilter pursuitKf = new LabelDecisionFilter(arg1, "chase");
         KeyFilter apprehendKf = new BooleanFilter(Key.of("ob.activity/apprehend", RuntimeType.BOOLEAN), "true");
@@ -76,6 +94,33 @@ public class RingQueryPort {
 
     public static void main(String[] args) {
         RingQueryPort port = new RingQueryPort();
-        port.run();   // escape static context
+        port.runQueryFromGraph();   // escape static context
+    }
+
+    private void runQueryFromGraph() {
+        Graph<ConceptNode, DefaultEdge> graph = conceptGraph();
+
+        List<ConceptNode> roots = graph.vertexSet().stream().filter(v -> graph.incomingEdgesOf(v).size() == 0).collect(Collectors.toList());
+        List<ConceptNode> leaves = graph.vertexSet().stream().filter(v -> graph.outgoingEdgesOf(v).size() == 0).collect(Collectors.toList());
+
+        LOG.info("Roots are {}", roots);
+        LOG.info("Leaves are {}", leaves);
+
+
+        ConceptNode theRoot = roots.get(0);
+        ConceptNode theLeaf = leaves.get(0);
+
+        DijkstraShortestPath<ConceptNode, DefaultEdge> dijkstraAlg = new DijkstraShortestPath<>(graph);
+        ShortestPathAlgorithm.SingleSourcePaths<ConceptNode, DefaultEdge> iPaths = dijkstraAlg.getPaths(theRoot);
+        GraphPath<ConceptNode, DefaultEdge> path = iPaths.getPath(theLeaf);
+
+        List<ConceptNode> steps = path.getVertexList();
+
+        for (ConceptNode step: steps) {
+            LOG.info("step is {}", step);
+
+            List<String> result = runSelectQuery(step.getFilter());
+            LOG.info("{}: {}", step.getLabel(), result.size());
+        }
     }
 }
