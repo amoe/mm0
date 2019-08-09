@@ -15,9 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.ac.susx.shl.micromacro.jdbi.BaseDAO;
 import uk.ac.susx.shl.micromacro.jdbi.DatumStringMapper;
-import uk.ac.susx.tag.method51.core.data.store2.query.OrderBy;
-import uk.ac.susx.tag.method51.core.data.store2.query.Partition;
-import uk.ac.susx.tag.method51.core.data.store2.query.Proximity;
 import uk.ac.susx.tag.method51.core.data.store2.query.Select;
 import uk.ac.susx.tag.method51.core.data.store2.query.SqlQuery;
 import uk.ac.susx.tag.method51.core.meta.Key;
@@ -29,7 +26,6 @@ import uk.ac.susx.tag.method51.core.meta.filters.logic.LogicParser;
 import uk.ac.susx.tag.method51.core.meta.types.RuntimeType;
 import uk.ac.susx.tag.method51.twitter.LabelDecision;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +36,7 @@ import java.util.stream.Collectors;
 public class RingQueryPort {
     private static Logger LOG = LoggerFactory.getLogger(RingQueryPort.class);
     private static String TABLE = "sampled2";
+    private JsonParser parser = new JsonParser();
 
 
     private BaseDAO<String, SqlQuery> getDao() {
@@ -63,13 +60,72 @@ public class RingQueryPort {
         return dao.list(query);
     }
 
+    private ConceptNode getNB(String label, String annotation) {
+        return new ConceptNode(
+            label,
+            new BooleanFilter(Key.of(annotation, RuntimeType.BOOLEAN), "true")
+        );
+    }
+
+    private ConceptNode getNL(String label, String annotation, String value) {
+        Key<LabelDecision> arg1 = Key.of(annotation, RuntimeType.of(LabelDecision.class));
+
+        return new ConceptNode(
+            label, new LabelDecisionFilter(arg1, value)
+        );
+    }
+
     public Graph<ConceptNode, DefaultEdge> conceptGraph() {
         Graph<ConceptNode, DefaultEdge> g = new DefaultDirectedGraph<>(DefaultEdge.class);
-        ConceptNode n1 = new ConceptNode("Pursuit", new LabelDecisionFilter(Key.of("classify/pursuit-chase", RuntimeType.of(LabelDecision.class)), "chase"));
-        ConceptNode n2 = new ConceptNode("Apprehend", new BooleanFilter(Key.of("ob.activity/apprehend", RuntimeType.BOOLEAN), "true"));
-        g.addVertex(n1);
-        g.addVertex(n2);
-        g.addEdge(n1, n2);
+
+        ConceptNode[] ring1 = {
+            getNL("Pursuit", "classify/pursuit-chase", "chase")
+        };
+
+        ConceptNode[] ring2 = {
+            getNB("Apprehend", "ob.activity/apprehend")
+        };
+
+
+        ConceptNode[] ring3 = {
+            getNB("Sphere/Maritime", "ob.sphere/maritime"),
+            getNL("Sphere/Military", "classify/classified-military-military", "military"),
+            getNL("Sphere/River", "ob.place/river-c", "river-related")
+        };
+
+
+        ConceptNode[] ring4 = {
+            getNB("Time/One", "ob.generalkws/one-kw"),
+            getNB("Time/Two", "ob.generalkws/two-kw"),
+            getNB("Time/Three", "ob.generalkws/three-kw"),
+            getNB("Time/Four", "ob.generalkws/four-kw"),
+            getNB("Time/Five", "obgeneralkws/five-kw"),
+            getNB("Time/Six", "ob.generalkws/six-kw"),
+            getNB("Time/Seven", "ob.generalkws/seven"),
+            getNB("Time/Eight", "ob.generalkws/eight-kw"),
+            getNB("Time/Nine", "ob.generalkws/nine-kw"),
+            getNB("Time/Ten", "ob.generalkws/ten"),
+            getNB("Time/Eleven", "ob.generalkws/eleven"),
+            getNB("Time/Twelve", "ob.generalkws/twelve")
+        };
+
+
+        for (ConceptNode n1: ring1) {
+            g.addVertex(n1);
+            for (ConceptNode n2: ring2) {
+                g.addVertex(n2);
+                g.addEdge(n1, n2);
+                for (ConceptNode n3: ring3) {
+                    g.addVertex(n3);
+                    g.addEdge(n2, n3);
+                    for (ConceptNode n4: ring4) {
+                        g.addVertex(n4);
+                        g.addEdge(n3, n4);
+                    }
+                }
+            }
+        }
+
         return g;
     }
 
@@ -94,7 +150,7 @@ public class RingQueryPort {
 
     public static void main(String[] args) {
         RingQueryPort port = new RingQueryPort();
-        port.runQueryFromGraph();   // escape static context
+//        port.runQueryFromGraph();   // escape static context
     }
 
     private void runQueryFromGraph() {
@@ -108,19 +164,53 @@ public class RingQueryPort {
 
 
         ConceptNode theRoot = roots.get(0);
-        ConceptNode theLeaf = leaves.get(0);
+//        ConceptNode theLeaf = leaves.get(0);
 
+
+        for (ConceptNode theLeaf : leaves) {
+            Set<String> trials = run(graph, theRoot, theLeaf);
+            LOG.info("Found {} trials", trials.size());
+        }
+    }
+
+    public Set<String> run(Graph<ConceptNode, DefaultEdge> graph, ConceptNode root, ConceptNode leaf) {
         DijkstraShortestPath<ConceptNode, DefaultEdge> dijkstraAlg = new DijkstraShortestPath<>(graph);
-        ShortestPathAlgorithm.SingleSourcePaths<ConceptNode, DefaultEdge> iPaths = dijkstraAlg.getPaths(theRoot);
-        GraphPath<ConceptNode, DefaultEdge> path = iPaths.getPath(theLeaf);
+        ShortestPathAlgorithm.SingleSourcePaths<ConceptNode, DefaultEdge> iPaths = dijkstraAlg.getPaths(root);
+        GraphPath<ConceptNode, DefaultEdge> path = iPaths.getPath(leaf);
 
         List<ConceptNode> steps = path.getVertexList();
 
+        Set<String> cooccurrenceSet = null;
+
         for (ConceptNode step: steps) {
-            LOG.info("step is {}", step);
+//            LOG.info("step is {}", step);
 
             List<String> result = runSelectQuery(step.getFilter());
-            LOG.info("{}: {}", step.getLabel(), result.size());
+//            LOG.info("{}: {}", step.getLabel(), result.size());
+            Set<String> trialsHere = getTrials(result);
+
+            if (cooccurrenceSet == null) {
+                cooccurrenceSet = new HashSet<>(trialsHere);
+            } else {
+                cooccurrenceSet.retainAll(trialsHere);
+            }
+
+//            LOG.info("size of trial set is {}", trialsHere.size());
         }
+
+        return cooccurrenceSet;
+    }
+
+    public Set<String> getTrials(List<String> jsonRows) {
+        Set<String> trials = new HashSet<String>();
+
+        for (String row : jsonRows) {
+            JsonElement element = parser.parse(row);
+            JsonObject object = element.getAsJsonObject();
+            String trialId = object.get("ob/trialAccount-id").getAsString();
+            trials.add(trialId);
+        }
+
+        return trials;
     }
 }

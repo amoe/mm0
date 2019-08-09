@@ -8,6 +8,8 @@ import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultUndirectedGraph;
 import org.jgrapht.graph.SimpleGraph;
+import org.jgrapht.io.ComponentNameProvider;
+import org.jgrapht.io.JSONExporter;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,13 +19,14 @@ import uk.ac.susx.tag.method51.core.meta.filters.impl.LabelDecisionFilter;
 import uk.ac.susx.tag.method51.core.meta.types.RuntimeType;
 import uk.ac.susx.tag.method51.twitter.LabelDecision;
 
+import java.io.StringWriter;
 import java.util.List;
 
 public class GraphTest {
     private static final Logger LOG = LoggerFactory.getLogger(GraphTest.class);
 
     @Test
-    public void graphDemo() {
+    public void graphDemo() throws Exception {
         LOG.info("graph demo");
 
         Graph<String, DefaultEdge> g = new DefaultDirectedGraph<>(DefaultEdge.class);
@@ -51,9 +54,23 @@ public class GraphTest {
 
         for (String s: vertexList) {
             LOG.info("I will visit s");
-
-
         }
+
+        // If you don't pass this, it's only going to export the structure.
+        JSONExporter foo = new JSONExporter(new ComponentNameProvider<String>() {
+            @Override
+            public String getName(String s) {
+                return s;
+            }
+        });
+
+        StringWriter stringWriter = new StringWriter();
+
+        foo.exportGraph(g, stringWriter);
+
+        String jsonVersion = stringWriter.toString();
+
+        LOG.info("exported to {}", jsonVersion);
     }
 
 }
