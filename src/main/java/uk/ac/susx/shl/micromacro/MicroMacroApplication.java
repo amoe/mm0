@@ -111,6 +111,8 @@ public class MicroMacroApplication extends Application<MicroMacroConfiguration> 
         environment.jersey().register(new WorkspacesResource(workspaces, workspaceFactory));
 
         environment.jersey().register(new WorkspaceResource(workspaces, queryFactory, cachingDAO));
+
+        environment.jersey().register(new GraphResource());
     }
 
 }

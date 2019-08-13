@@ -33,8 +33,12 @@ public class GraphTest {
 
         g.addVertex("Alice");
         g.addVertex("Bob");
+        g.addVertex("Carol");
+        g.addVertex("Dan");
 
         g.addEdge("Alice", "Bob");
+        g.addEdge("Bob", "Carol");
+        g.addEdge("Bob", "Dan");
 
         LOG.info("graph is {}", g);
 
