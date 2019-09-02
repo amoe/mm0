@@ -65,12 +65,13 @@ public class GraphTest {
             public Map<String, Attribute> getComponentAttributes(TokenDatum d) {
                 Map<String, Attribute> result = new HashMap<>();
 
-
+                // fill in node attributes here.
 
                 result.put("x", DefaultAttribute.createAttribute(true));
                 return result;
             }
         },
+            // these fakes just number edges as default and don't output any edge stuff.
             new IntegerComponentNameProvider(),
             new EmptyComponentAttributeProvider());
 
