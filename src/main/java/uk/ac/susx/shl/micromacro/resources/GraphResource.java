@@ -53,7 +53,6 @@ public class GraphResource {
         return jsonVersion;
     }
 
-
     @GET
     public Response getGraph() {
         String content = getGraphJson();

@@ -125,7 +125,6 @@ public class RingQueryPort {
                 }
             }
         }
-
         return g;
     }
 

@@ -47,7 +47,6 @@ public class Method52DAO {
     }
 
     public KeySet schema(String table) {
-
         Gson gson = GsonBuilderFactory.get().create();
 
         try (Handle handle  = jdbi.open()) {
