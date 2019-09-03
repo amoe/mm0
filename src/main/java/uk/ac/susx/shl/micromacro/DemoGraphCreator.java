@@ -24,9 +24,9 @@ public class DemoGraphCreator {
         Graph<TokenDatum, DefaultEdge> g = new DefaultDirectedGraph<>(DefaultEdge.class);
 
         TokenDatum d1 = new TokenDatum("Alice", 0, "Token", Optional.empty());
-        TokenDatum d2 = new TokenDatum("Bob", 0, "Token", Optional.of(1L));
-        TokenDatum d3 = new TokenDatum("Carol", 0, "Token", Optional.of(2L));
-        TokenDatum d4 = new TokenDatum("Dan", 0, "Token", Optional.of(3L));
+        TokenDatum d2 = new TokenDatum("Bob", 1, "Token", Optional.of(1L));
+        TokenDatum d3 = new TokenDatum("Carol", 2, "Token", Optional.of(2L));
+        TokenDatum d4 = new TokenDatum("Dan", 3, "Token", Optional.of(3L));
 
         g.addVertex(d1);
         g.addVertex(d2);
