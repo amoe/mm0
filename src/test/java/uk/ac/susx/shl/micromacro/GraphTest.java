@@ -18,6 +18,8 @@ import org.jgrapht.io.JSONExporter;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.ac.susx.shl.micromacro.jgrapht.TokenDatumVertexAttributeProvider;
+import uk.ac.susx.shl.micromacro.jgrapht.TokenDatumVertexNameProvider;
 import uk.ac.susx.tag.method51.core.meta.Key;
 import uk.ac.susx.tag.method51.core.meta.filters.impl.BooleanFilter;
 import uk.ac.susx.tag.method51.core.meta.filters.impl.LabelDecisionFilter;
@@ -55,28 +57,14 @@ public class GraphTest {
         LOG.info("graph is {}", g);
 
         // If you don't pass this, it's only going to export the structure.
-        JSONExporter foo = new JSONExporter(new ComponentNameProvider<TokenDatum>() {
-            @Override
-            public String getName(TokenDatum d) {
-                return Long.toString(d.getId());
-            }
-        }, new ComponentAttributeProvider<TokenDatum>() {
-            @Override
-            public Map<String, Attribute> getComponentAttributes(TokenDatum d) {
-                Map<String, Attribute> result = new HashMap<>();
-
-                // fill in node attributes here.
-
-                result.put("x", DefaultAttribute.createAttribute(true));
-                return result;
-            }
-        },
+        JSONExporter<TokenDatum, DefaultEdge> foo = new JSONExporter<>(
+            new TokenDatumVertexNameProvider(),
+            new TokenDatumVertexAttributeProvider(),
             // these fakes just number edges as default and don't output any edge stuff.
-            new IntegerComponentNameProvider(),
-            new EmptyComponentAttributeProvider());
-
+            new IntegerComponentNameProvider<DefaultEdge>(),
+            new EmptyComponentAttributeProvider<DefaultEdge>()
+        );
         StringWriter stringWriter = new StringWriter();
-
         foo.exportGraph(g, stringWriter);
 
         String jsonVersion = stringWriter.toString();
