@@ -30,46 +30,14 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class GraphTest {
     private static final Logger LOG = LoggerFactory.getLogger(GraphTest.class);
 
     @Test
     public void graphDemo() throws Exception {
-        LOG.info("graph demo");
-
-        Graph<TokenDatum, DefaultEdge> g = new DefaultDirectedGraph<>(DefaultEdge.class);
-
-        TokenDatum d1 = new TokenDatum("Alice", 0, null, null);
-        TokenDatum d2 = new TokenDatum("Bob", 0, null, null);
-        TokenDatum d3 = new TokenDatum("Carol", 0, null, null);
-        TokenDatum d4 = new TokenDatum("Dan", 0, null, null);
-
-        g.addVertex(d1);
-        g.addVertex(d2);
-        g.addVertex(d3);
-        g.addVertex(d4);
-
-        g.addEdge(d1, d2);
-        g.addEdge(d2, d3);
-        g.addEdge(d2, d4);
-
-        LOG.info("graph is {}", g);
-
-        // If you don't pass this, it's only going to export the structure.
-        JSONExporter<TokenDatum, DefaultEdge> foo = new JSONExporter<>(
-            new TokenDatumVertexNameProvider(),
-            new TokenDatumVertexAttributeProvider(),
-            // these fakes just number edges as default and don't output any edge stuff.
-            new IntegerComponentNameProvider<DefaultEdge>(),
-            new EmptyComponentAttributeProvider<DefaultEdge>()
-        );
-        StringWriter stringWriter = new StringWriter();
-        foo.exportGraph(g, stringWriter);
-
-        String jsonVersion = stringWriter.toString();
-
-        LOG.info("exported to {}", jsonVersion);
+        LOG.info("{}", new DemoGraphCreator().getExportedGraph());
     }
 
 }

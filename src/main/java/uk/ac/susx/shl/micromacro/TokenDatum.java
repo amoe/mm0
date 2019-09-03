@@ -1,5 +1,7 @@
 package uk.ac.susx.shl.micromacro;
 
+import com.google.common.base.Preconditions;
+
 import java.util.Objects;
 import java.util.Optional;
 
@@ -27,6 +29,9 @@ public class TokenDatum {
     }
 
     public TokenDatum(String content, long id, String label, Optional<Long> strength) {
+        Preconditions.checkNotNull(content);
+        Preconditions.checkNotNull(label);
+
         this.content = content;
         this.id = id;
         this.label = label;
